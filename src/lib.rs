@@ -1,5 +1,5 @@
 use bit_set::BitSet;
-use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, TextureFilter, Rect, Pos2};
+use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, TextureFilter, Rect, Pos2, TextureId};
 use tiny_skia::{PixmapPaint, Transform};
 
 #[derive(PartialEq, Clone, Debug)]
@@ -200,6 +200,11 @@ impl Img {
     #[inline]
     pub fn contains_pixel(&self, rect: &Rect) -> bool {
         self.bit_img.contains_pixel(rect)
+    }
+
+    #[inline]
+    pub fn texture_id(&self) -> TextureId {
+        self.texture.id()
     }
 }
 
