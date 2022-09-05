@@ -182,6 +182,11 @@ impl Img {
         }
     }
 
+    pub fn from_svg<T>(name: T, svg_bytes: &[u8], scale: f32, ctx: &Context) -> Result<Self, SvgError> where T: Into<String> {
+        let img = load_svg_bytes(svg_bytes, scale)?;
+        Ok(Self::from_img(name, img, ctx))
+    }
+
     #[inline]
     pub fn size(&self) -> Vec2 {
         self.texture.size_vec2()
