@@ -1,0 +1,14 @@
+[package]
+name = "clickable_img"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.63"
+description = "Click aware image for egui."
+license = "Apache-2.0"
+
+[dependencies]
+egui = { version = "0.19", features = ["extra_debug_asserts"] }
+bit-set = "0.5.3"
+usvg = "0.23"
+resvg = "0.23"
+tiny-skia = "0.6.6"
