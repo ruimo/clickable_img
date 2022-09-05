@@ -203,6 +203,7 @@ impl Img {
     }
 }
 
+#[derive(Debug)]
 pub enum SvgError {
     CannotParse(usvg::Error),
     CannotLoad { width: u32, height: u32 },
