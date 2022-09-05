@@ -199,6 +199,7 @@ impl Img {
 }
 
 pub enum SvgError {
+    CannotParse(usvg::Error),
     CannotLoad { width: u32, height: u32 },
     CannotRender,
 }
@@ -207,7 +208,7 @@ pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, 
     let mut opt = usvg::Options::default();
     opt.fontdb.load_system_fonts();
 
-    let svg_tree = usvg::Tree::from_data(svg_bytes, &opt.to_ref()).map_err(|err| err.to_string())?;
+    let svg_tree = usvg::Tree::from_data(svg_bytes, &opt.to_ref()).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
 
     let pixmap_size = svg_tree.svg_node().size.to_screen_size();
     let [w, h] = [pixmap_size.width(), pixmap_size.height()];
