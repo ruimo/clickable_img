@@ -308,12 +308,12 @@ pub fn to_bitset(img: &ColorImage) -> BitSet {
 
 #[cfg(test)]
 mod tests {
-    use std::{fmt, io::ErrorKind};
+    use std::{io::ErrorKind};
 
     use bit_set::BitSet;
     use egui::{ColorImage, Color32, Context, Rect, Pos2, Vec2};
     use local_file_cache::LocalFileCache;
-    use crate::{Img, Pixels2D, LayeredRect, load_svg_bytes, SvgLoader, SvgError};
+    use crate::{Img, Pixels2D, LayeredRect, load_svg_bytes, SvgLoader};
 
     use super::to_bitset;
 
