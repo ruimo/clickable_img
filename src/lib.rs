@@ -308,7 +308,7 @@ pub fn to_bitset(img: &ColorImage) -> BitSet {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt;
+    use std::{fmt, io::ErrorKind};
 
     use bit_set::BitSet;
     use egui::{ColorImage, Color32, Context, Rect, Pos2, Vec2};
@@ -522,7 +522,11 @@ mod tests {
 #[test]
     fn can_cache() {
         let img = load_svg_bytes(TEST_SVG, 0.1).unwrap();
-        LocalFileCache::<()>::invalidate("my_test");
+        if let Err(e) = LocalFileCache::<()>::invalidate("my_test").unwrap() {
+            if e.kind() != ErrorKind::NotFound {
+                panic!("Unexpected error {:?}", e);
+            }
+        }
         let loader = SvgLoader::new(0.1, Some("my_test"));
         let cached = loader.load(TEST_SVG).unwrap();
         assert_eq!(img.size, cached.size);
