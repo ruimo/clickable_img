@@ -1,5 +1,11 @@
+use std::path::{Path};
+use std::hash::{Hash, Hasher};
+
 use bit_set::BitSet;
 use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, TextureFilter, Rect, Pos2, TextureId};
+use img_converter::{img_to_u8, u8_to_img};
+use local_file_cache::LocalFileCache;
+use sha::sha256::Sha256;
 use tiny_skia::{PixmapPaint, Transform};
 
 pub mod img_converter;
@@ -215,6 +221,46 @@ pub enum SvgError {
     CannotParse(usvg::Error),
     CannotLoad { width: u32, height: u32 },
     CannotRender,
+    Other(String),
+}
+
+pub struct SvgLoader {
+    pub scale: f32,
+    pub cache: Option<LocalFileCache<Result<ColorImage, SvgError>>>,
+}
+
+impl SvgLoader {
+    pub fn new<P>(scale: f32, cache_dir: Option<P>) -> Self where P: AsRef<Path> {
+        Self {
+            scale,
+            cache: cache_dir.and_then(|p| LocalFileCache::<Result<ColorImage, SvgError>>::new(p,
+                Box::new(|img|
+                    match img {
+                        Ok(ci) => Some(img_to_u8(ci)),
+                        Err(_) => None,
+                    }
+                ),
+                Box::new(|bin| Ok(u8_to_img(bin)))
+            )),
+        }
+    }
+
+    pub fn load(&self, svg_bytes: &[u8]) -> Result<egui::ColorImage, SvgError> {
+        match self.cache.as_ref() {
+            Some(cache) => {
+                let mut hash = Sha256::default();
+                <u8 as Hash>::hash_slice(&self.scale.to_ne_bytes(), &mut hash);
+                <u8 as Hash>::hash_slice(svg_bytes, &mut hash);
+                let hex_str = format!("{:x}", hash.finish());
+                let fname = Path::new(&hex_str);
+                match cache.or_insert_with(fname, || load_svg_bytes(svg_bytes, self.scale)) {
+                    Ok(ok) => ok,
+                    Err(io_err) => Err(SvgError::Other(io_err.to_string()))
+                }
+            },
+            None => load_svg_bytes(svg_bytes, self.scale),
+        }
+    }
 }
 
 pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, SvgError> {
@@ -262,9 +308,12 @@ pub fn to_bitset(img: &ColorImage) -> BitSet {
 
 #[cfg(test)]
 mod tests {
+    use std::fmt;
+
     use bit_set::BitSet;
     use egui::{ColorImage, Color32, Context, Rect, Pos2, Vec2};
-    use crate::{Img, Pixels2D, LayeredRect};
+    use local_file_cache::LocalFileCache;
+    use crate::{Img, Pixels2D, LayeredRect, load_svg_bytes, SvgLoader, SvgError};
 
     use super::to_bitset;
 
@@ -462,5 +511,25 @@ mod tests {
         assert!(!pixels.contains_pixel(&Rect::from_min_size(Pos2::new(0.0, 4.0), Vec2::new(2.0, 2.0))));
         assert!(pixels.contains_pixel(&Rect::from_min_size(Pos2::new(0.0, 3.0), Vec2::new(3.0, 3.0))));
         assert!(!pixels.contains_pixel(&Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(20.0, 20.0))));
+    }
+    
+    const TEST_SVG: &'static [u8] = br#"<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" >
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="-10 0 1292 4096">
+   <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3"/>
+</svg>"#;
+
+#[test]
+    fn can_cache() {
+        let img = load_svg_bytes(TEST_SVG, 0.1).unwrap();
+        LocalFileCache::<()>::invalidate("my_test");
+        let loader = SvgLoader::new(0.1, Some("my_test"));
+        let cached = loader.load(TEST_SVG).unwrap();
+        assert_eq!(img.size, cached.size);
+        assert_eq!(img.pixels, cached.pixels);
+
+        let cached = loader.load(TEST_SVG).unwrap();
+        assert_eq!(img.size, cached.size);
+        assert_eq!(img.pixels, cached.pixels);
     }
 }
