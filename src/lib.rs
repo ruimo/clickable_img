@@ -2,6 +2,8 @@ use bit_set::BitSet;
 use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, TextureFilter, Rect, Pos2, TextureId};
 use tiny_skia::{PixmapPaint, Transform};
 
+pub mod img_converter;
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct Pixels2D {
     bits: BitSet,
