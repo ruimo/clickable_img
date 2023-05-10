@@ -6,10 +6,9 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-    - name: prepare
-      run:
-        rm -rf ~/.cargo/registry
     - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     - name: cargo plugin cache
       id: cargo-plugin-cache
       uses: actions/cache@v2
@@ -25,5 +24,5 @@ jobs:
       run: |
         git config --global user.email "ruimo.uno@gmail.com"
         git config --global user.name "Shisei Hanai"
-        git status
+        git tag
         cargo release release -vv --execute --no-confirm
