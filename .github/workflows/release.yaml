@@ -3,10 +3,10 @@ name: Release
 on: [ workflow_dispatch ]
 
 jobs:
-  beta_release:
+  release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: cargo plugin cache
       id: cargo-plugin-cache
       uses: actions/cache@v2
@@ -23,4 +23,4 @@ jobs:
         git config --global user.email "ruimo.uno@gmail.com"
         git config --global user.name "Shisei Hanai"
         git status
-        cargo release -vv --execute --no-confirm
+        cargo release release -vv --execute --no-confirm
