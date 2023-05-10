@@ -6,6 +6,9 @@ jobs:
   beta_release:
     runs-on: ubuntu-latest
     steps:
+    - name: prepare
+      run:
+        rm -rf ~/.cargo/registry
     - uses: actions/checkout@v3
     - name: cargo plugin cache
       id: cargo-plugin-cache
@@ -20,6 +23,7 @@ jobs:
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       run: |
+        rm -rf ~/.cargo/registry
         git config --global user.email "ruimo.uno@gmail.com"
         git config --global user.name "Shisei Hanai"
         git status
