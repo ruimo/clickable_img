@@ -264,12 +264,13 @@ impl SvgLoader {
 }
 
 pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, SvgError> {
-    let mut opt = usvg::Options::default();
-    opt.fontdb.load_system_fonts();
+    use usvg::TreeParsing;
 
-    let svg_tree = usvg::Tree::from_data(svg_bytes, &opt.to_ref()).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
+    let opt = usvg::Options::default();
 
-    let pixmap_size = svg_tree.svg_node().size.to_screen_size();
+    let svg_tree = usvg::Tree::from_data(svg_bytes, &opt).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
+
+    let pixmap_size = svg_tree.size.to_screen_size();
     let [w, h] = [pixmap_size.width(), pixmap_size.height()];
 
     let mut pixmap = tiny_skia::Pixmap::new(w, h)
@@ -277,7 +278,7 @@ pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, 
 
     resvg::render(
         &svg_tree,
-        usvg::FitTo::Original,
+        resvg::FitTo::Original,
         Default::default(),
         pixmap.as_mut(),
     ).ok_or_else(|| SvgError::CannotRender)?;
