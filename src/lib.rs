@@ -2,7 +2,7 @@ use std::path::{Path};
 use std::hash::{Hash, Hasher};
 
 use bit_set::BitSet;
-use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, TextureFilter, Rect, Pos2, TextureId};
+use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, TextureFilter, Rect, Pos2, TextureId, TextureOptions};
 use img_converter::{img_to_u8, u8_to_img};
 use local_file_cache::LocalFileCache;
 use sha::sha256::Sha256;
@@ -182,7 +182,7 @@ pub struct Img {
 impl Img {
     pub fn from_img<T>(name: T, img: ColorImage, ctx: &Context) -> Self where T: Into<String> {
         let bits = to_bitset(&img);
-        let texture = ctx.load_texture(name, img, TextureFilter::Linear);
+        let texture = ctx.load_texture(name, img, TextureOptions::LINEAR);
         let size = texture.size();
         Self {
             bit_img: BitImg::new(Pixels2D::new(bits, Rect::from_min_size(Pos2::ZERO, Vec2::new(size[0] as f32, size[1] as f32)))),
