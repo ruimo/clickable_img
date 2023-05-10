@@ -16,9 +16,11 @@ jobs:
     - name: install cargo plugin
       if: steps.cargo-plugin-cache.outputs.cache-hit != 'true'
       run: cargo install cargo-release
-    - name: Beta Release
+    - name: Release
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       run: |
         git config --global user.email "ruimo.uno@gmail.com"
         git config --global user.name "Shisei Hanai"
         git status
-        cargo release -vv --execute --no-confirm --token ${{ secrets.CLICKABLE_IMG }}
+        cargo release -vv --execute --no-confirm
