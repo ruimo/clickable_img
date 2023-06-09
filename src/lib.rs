@@ -274,11 +274,8 @@ pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, 
     let pixmap_size = resvg_tree.size.to_int_size();
     let [w, h] = [pixmap_size.width(), pixmap_size.height()];
 
-    let mut pixmap = tiny_skia::Pixmap::new(w, h)
+    let pixmap = tiny_skia::Pixmap::new(w, h)
         .ok_or_else(|| SvgError::CannotLoad { width: w, height: h })?;
-    let mut mut_pixmap = pixmap.as_mut();
-
-    resvg_tree.render(Transform::identity(), &mut mut_pixmap);
 
     let mut scaled_pixmap = tiny_skia::Pixmap::new(((w as f32) * scale) as u32, ((h as f32) * scale) as u32).unwrap();
     scaled_pixmap.draw_pixmap(0, 0, pixmap.as_ref(), &PixmapPaint::default(), Transform::from_scale(scale, scale), None);
