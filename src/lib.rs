@@ -1,4 +1,4 @@
-use std::path::{Path};
+use std::path::Path;
 use std::hash::{Hash, Hasher};
 
 use bit_set::BitSet;
@@ -6,7 +6,6 @@ use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, Rect, Pos2, Textur
 use img_converter::{img_to_u8, u8_to_img};
 use local_file_cache::LocalFileCache;
 use sha::sha256::Sha256;
-use tiny_skia::{PixmapPaint, Transform};
 
 pub mod img_converter;
 
@@ -274,16 +273,15 @@ pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, 
     let pixmap_size = resvg_tree.size.to_int_size();
     let [w, h] = [pixmap_size.width(), pixmap_size.height()];
 
-    let pixmap = tiny_skia::Pixmap::new(w, h)
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(((w as f32) * scale) as u32, ((h as f32) * scale) as u32)
         .ok_or_else(|| SvgError::CannotLoad { width: w, height: h })?;
+    resvg_tree.render(usvg::Transform::from_scale(scale, scale), &mut pixmap.as_mut());
 
-    let mut scaled_pixmap = tiny_skia::Pixmap::new(((w as f32) * scale) as u32, ((h as f32) * scale) as u32).unwrap();
-    scaled_pixmap.draw_pixmap(0, 0, pixmap.as_ref(), &PixmapPaint::default(), Transform::from_scale(scale, scale), None);
-
-    Ok(egui::ColorImage::from_rgba_unmultiplied(
-        [scaled_pixmap.width() as _, scaled_pixmap.height() as _],
-        scaled_pixmap.data(),
-    ))
+    let img = egui::ColorImage::from_rgba_unmultiplied(
+        [pixmap.width() as usize, pixmap.height() as usize],
+        pixmap.data(),
+    );
+    Ok(img)
 }
 
 pub fn to_bitset(img: &ColorImage) -> BitSet {
@@ -508,14 +506,15 @@ mod tests {
         assert!(!pixels.contains_pixel(&Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(20.0, 20.0))));
     }
     
-    const TEST_SVG: &'static [u8] = br#"<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" >
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="-10 0 1292 4096">
-   <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3"/>
-</svg>"#;
-
-#[test]
+    #[test]
     fn can_cache() {
+        const TEST_SVG: &'static [u8] = br#"<?xml version="1.0" standalone="no"?>
+        <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" >
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 100 100">
+           <rect x="0" y="0" width="99" height="99" style="fill:rgb(0,0,0);stroke-width:1"/>
+        </svg>
+        "#;
+    
         let img = load_svg_bytes(TEST_SVG, 0.1).unwrap();
         if let Err(e) = LocalFileCache::<()>::invalidate("my_test").unwrap() {
             if e.kind() != ErrorKind::NotFound {
@@ -524,11 +523,18 @@ mod tests {
         }
         let loader = SvgLoader::new(0.1, Some("my_test"));
         let cached = loader.load(TEST_SVG).unwrap();
+
         assert_eq!(img.size, cached.size);
         assert_eq!(img.pixels, cached.pixels);
 
         let cached = loader.load(TEST_SVG).unwrap();
         assert_eq!(img.size, cached.size);
         assert_eq!(img.pixels, cached.pixels);
+
+        for x in 0..cached.width() {
+            for y in 0..cached.height() {
+                assert_eq!(cached[(x, y)], Color32::BLACK);
+            }
+        }
     }
 }
