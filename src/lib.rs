@@ -263,24 +263,30 @@ impl SvgLoader {
 }
 
 pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, SvgError> {
-    use usvg::TreeParsing;
-
     let opt = usvg::Options::default();
-
     let usvg_tree: usvg::Tree = usvg::Tree::from_data(svg_bytes, &opt).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
-    let resvg_tree = resvg::Tree::from_usvg(&usvg_tree);
-
-    let pixmap_size = resvg_tree.size.to_int_size();
-    let [w, h] = [pixmap_size.width(), pixmap_size.height()];
+    let size = usvg_tree.size;
+    let w = size.width().ceil() as usize;
+    let h = size.height().ceil() as usize;
 
     let mut pixmap = resvg::tiny_skia::Pixmap::new(((w as f32) * scale) as u32, ((h as f32) * scale) as u32)
-        .ok_or_else(|| SvgError::CannotLoad { width: w, height: h })?;
-    resvg_tree.render(usvg::Transform::from_scale(scale, scale), &mut pixmap.as_mut());
+        .ok_or_else(|| SvgError::CannotLoad { width: w as u32, height: h as u32})?;
+    resvg::render(&usvg_tree, usvg::Transform::from_scale(scale, scale), &mut pixmap.as_mut());
 
-    let img = egui::ColorImage::from_rgba_unmultiplied(
-        [pixmap.width() as usize, pixmap.height() as usize],
-        pixmap.data(),
+    let mut img = egui::ColorImage::from_rgba_unmultiplied(
+        [pixmap.width() as usize, pixmap.height() as usize], pixmap.data(),
     );
+
+    let [width, height] = img.size;
+    for y in 0..height {
+        for x in 0..width {
+            let c = img[(x, y)];
+            if c == Color32::TRANSPARENT {
+                img[(x, y)] = Color32::BLACK;
+            }
+        }
+    }
+
     Ok(img)
 }
 
