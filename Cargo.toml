@@ -1,6 +1,6 @@
 [package]
 name = "clickable_img"
-version = "0.1.10-beta.2"
+version = "0.1.10-beta.3"
 edition = "2021"
 rust-version = "1.65"
 description = "Click aware image for egui."
