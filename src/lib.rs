@@ -6,6 +6,7 @@ use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, Rect, Pos2, Textur
 use img_converter::{img_to_u8, u8_to_img};
 use local_file_cache::LocalFileCache;
 use sha::sha256::Sha256;
+use usvg::fontdb;
 
 pub mod img_converter;
 
@@ -264,8 +265,8 @@ impl SvgLoader {
 
 pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, SvgError> {
     let opt = usvg::Options::default();
-    let usvg_tree: usvg::Tree = usvg::Tree::from_data(svg_bytes, &opt).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
-    let size = usvg_tree.size;
+    let usvg_tree: usvg::Tree = usvg::Tree::from_data(svg_bytes, &opt, &fontdb::Database::default()).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
+    let size = usvg_tree.size();
     let w = size.width().ceil() as usize;
     let h = size.height().ceil() as usize;
 
@@ -273,19 +274,9 @@ pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, 
         .ok_or_else(|| SvgError::CannotLoad { width: w as u32, height: h as u32})?;
     resvg::render(&usvg_tree, usvg::Transform::from_scale(scale, scale), &mut pixmap.as_mut());
 
-    let mut img = egui::ColorImage::from_rgba_unmultiplied(
+    let img = egui::ColorImage::from_rgba_unmultiplied(
         [pixmap.width() as usize, pixmap.height() as usize], pixmap.data(),
     );
-
-    let [width, height] = img.size;
-    for y in 0..height {
-        for x in 0..width {
-            let c = img[(x, y)];
-            if c == Color32::TRANSPARENT {
-                img[(x, y)] = Color32::BLACK;
-            }
-        }
-    }
 
     Ok(img)
 }
@@ -307,8 +298,7 @@ pub fn to_bitset(img: &ColorImage) -> BitSet {
 
 #[cfg(test)]
 mod tests {
-    use std::{io::ErrorKind};
-
+    use std::io::ErrorKind;
     use bit_set::BitSet;
     use egui::{ColorImage, Color32, Context, Rect, Pos2, Vec2};
     use local_file_cache::LocalFileCache;
@@ -324,7 +314,7 @@ mod tests {
         let img = ColorImage {
             size: [8, 16],
             pixels: vec![
-            //  0  1  2  3  4  5  6  7    
+                //  0  1  2  3  4  5  6  7    
                 T, T, T, T, T, T, T, T, // 0
                 T, T, T, T, T, T, T, T, // 1
                 T, T, B, T, T, T, B, B, // 2
@@ -358,7 +348,7 @@ mod tests {
         let img = ColorImage {
             size: [8, 16],
             pixels: vec![
-            //  0  1  2  3  4  5  6  7    
+                //  0  1  2  3  4  5  6  7    
                 T, T, T, T, T, T, T, T, // 0
                 T, T, T, T, T, T, T, T, // 1
                 T, T, B, T, T, T, B, B, // 2
@@ -512,15 +502,31 @@ mod tests {
         assert!(!pixels.contains_pixel(&Rect::from_min_size(Pos2::new(10.0, 10.0), Vec2::new(20.0, 20.0))));
     }
     
+    const TEST_SVG: &'static [u8] = br#"<?xml version="1.0" standalone="no"?>
+    <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" >
+    <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 100 100">
+       <rect x="0" y="0" width="99" height="99" style="fill:rgb(255,0,0);stroke-width:1"/>
+    </svg>
+    "#;
+
+    #[test]
+    fn svg_to_img() {
+        let img = load_svg_bytes(TEST_SVG, 1.0).unwrap();
+        assert_eq!(img.width(), 100);
+        assert_eq!(img.height(), 100);
+        assert_eq!(img[(0, 0)], Color32::RED);
+        assert_eq!(img[(98, 0)], Color32::RED);
+        assert_eq!(img[(99, 0)], Color32::TRANSPARENT);
+
+        assert_eq!(img[(0, 98)], Color32::RED);
+        assert_eq!(img[(0, 99)], Color32::TRANSPARENT);
+
+        assert_eq!(img[(98, 98)], Color32::RED);
+        assert_eq!(img[(99, 99)], Color32::TRANSPARENT);
+    }
+
     #[test]
     fn can_cache() {
-        const TEST_SVG: &'static [u8] = br#"<?xml version="1.0" standalone="no"?>
-        <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" >
-        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 100 100">
-           <rect x="0" y="0" width="99" height="99" style="fill:rgb(0,0,0);stroke-width:1"/>
-        </svg>
-        "#;
-    
         let img = load_svg_bytes(TEST_SVG, 0.1).unwrap();
         if let Err(e) = LocalFileCache::<()>::invalidate("my_test").unwrap() {
             if e.kind() != ErrorKind::NotFound {
@@ -539,7 +545,7 @@ mod tests {
 
         for x in 0..cached.width() {
             for y in 0..cached.height() {
-                assert_eq!(cached[(x, y)], Color32::BLACK);
+                assert_eq!(cached[(x, y)], Color32::RED);
             }
         }
     }
