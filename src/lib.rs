@@ -265,7 +265,7 @@ impl SvgLoader {
 
 pub fn load_svg_bytes(svg_bytes: &[u8], scale: f32) -> Result<egui::ColorImage, SvgError> {
     let opt = usvg::Options::default();
-    let usvg_tree: usvg::Tree = usvg::Tree::from_data(svg_bytes, &opt, &fontdb::Database::default()).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
+    let usvg_tree: usvg::Tree = usvg::Tree::from_data(svg_bytes, &opt).map_err(|err: usvg::Error| SvgError::CannotParse(err))?;
     let size = usvg_tree.size();
     let w = size.width().ceil() as usize;
     let h = size.height().ceil() as usize;
