@@ -6,7 +6,6 @@ use egui::{ColorImage, Color32, TextureHandle, Vec2, Context, Rect, Pos2, Textur
 use img_converter::{img_to_u8, u8_to_img};
 use local_file_cache::LocalFileCache;
 use sha::sha256::Sha256;
-use usvg::fontdb;
 
 pub mod img_converter;
 
@@ -20,6 +19,15 @@ impl Pixels2D {
     fn new(bits: BitSet, rect: Rect) -> Self {
         Self {
             bits, rect,
+        }
+    }
+    
+    pub fn dump(&self) {
+        for y in 0..(self.rect.height() as usize) {
+            for x in 0..(self.rect.width() as usize) {
+                print!("{}", if self.pixel_at(x, y) { "X" } else {" "});
+            }
+            println!("");
         }
     }
 
@@ -37,7 +45,9 @@ impl Pixels2D {
 
         for y in start_y..(start_y + h) {
             for x in start_x..(start_x + w) {
-                if self.pixel_at(x, y) { count += 1; }
+                if self.pixel_at(x, y) { 
+                    count += 1;
+                }
             }
         }
 
@@ -71,9 +81,9 @@ pub enum LayeredRect {
 
 pub fn split_horizontal(rect: &Rect) -> [Rect; 2] {
     let split_at = (rect.width() as usize) / 2;
-    let left_rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(split_at as f32, rect.height()));
+    let left_rect = Rect::from_min_size(rect.left_top(), Vec2::new(split_at as f32, rect.height()));
     let right_rect = Rect::from_min_size(
-        Pos2::new(split_at as f32, 0.),
+        Pos2::new(rect.left() + split_at as f32, rect.top()),
         Vec2::new(rect.width() - split_at as f32, rect.height())
     );
 
@@ -82,9 +92,9 @@ pub fn split_horizontal(rect: &Rect) -> [Rect; 2] {
 
 pub fn split_vertical(rect: &Rect) -> [Rect; 2] {
     let split_at = (rect.height() as usize) / 2;
-    let top_rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(rect.width(), split_at as f32));
+    let top_rect = Rect::from_min_size(rect.left_top(), Vec2::new(rect.width(), split_at as f32));
     let bottom_rect = Rect::from_min_size(
-        Pos2::new(0., split_at as f32),
+        Pos2::new(rect.left(), rect.top() + split_at as f32),
         Vec2::new(rect.width(), rect.height() - split_at as f32)
     );
 
@@ -114,9 +124,10 @@ impl LayeredRect {
                 children: [Box::new(l0), Box::new(l1)]
             }
         } else {
+            let cnt = bit_img.pixel_count(rect);
             LayeredRect::Leaf {
                 rect,
-                pixel_count: bit_img.pixel_count(rect),
+                pixel_count: cnt,
             }
         }
     }
@@ -140,6 +151,11 @@ impl BitImg {
             layered_rect: LayeredRect::new(pixels.rect, &pixels),
             pixels,
         }
+    }
+    
+    pub fn dump(&self) {
+        self.pixels.dump();
+        println!("layered_rect: {:?}", self.layered_rect);
     }
 
     #[inline]
@@ -184,9 +200,10 @@ impl Img {
         let bits = to_bitset(&img);
         let texture = ctx.load_texture(name, img, TextureOptions::LINEAR);
         let size = texture.size();
+        let pixels = Pixels2D::new(bits, Rect::from_min_size(Pos2::ZERO, Vec2::new(size[0] as f32, size[1] as f32)));
+        let bit_img = BitImg::new(pixels);
         Self {
-            bit_img: BitImg::new(Pixels2D::new(bits, Rect::from_min_size(Pos2::ZERO, Vec2::new(size[0] as f32, size[1] as f32)))),
-            texture,
+            bit_img, texture,
         }
     }
 
@@ -508,10 +525,19 @@ mod tests {
        <rect x="0" y="0" width="99" height="99" style="fill:rgb(255,0,0);stroke-width:1"/>
     </svg>
     "#;
+    
+    #[test]
+    fn img_contains_pixel() {
+        let img: ColorImage = load_svg_bytes(TEST_SVG, 1.0).unwrap();
+        let ctx = Context::default();
+        let img: Img = Img::from_img("test", img, &ctx);
+        assert!(!img.contains_pixel(&Rect::from_min_size(Pos2::new(99., 0.), Vec2::new(1., 1.))));
+        assert!(img.contains_pixel(&Rect::from_min_size(Pos2::new(0., 0.), Vec2::new(1., 1.))));
+    }
 
     #[test]
     fn svg_to_img() {
-        let img = load_svg_bytes(TEST_SVG, 1.0).unwrap();
+        let img: ColorImage = load_svg_bytes(TEST_SVG, 1.0).unwrap();
         assert_eq!(img.width(), 100);
         assert_eq!(img.height(), 100);
         assert_eq!(img[(0, 0)], Color32::RED);
@@ -527,7 +553,7 @@ mod tests {
 
     #[test]
     fn can_cache() {
-        let img = load_svg_bytes(TEST_SVG, 0.1).unwrap();
+        let img: ColorImage = load_svg_bytes(TEST_SVG, 0.1).unwrap();
         if let Err(e) = LocalFileCache::<()>::invalidate("my_test").unwrap() {
             if e.kind() != ErrorKind::NotFound {
                 panic!("Unexpected error {:?}", e);
@@ -548,5 +574,41 @@ mod tests {
                 assert_eq!(cached[(x, y)], Color32::RED);
             }
         }
+    }
+
+    #[test]
+    fn do_split_horizontal() {
+        let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(10.0, 5.0));
+        let [left, right] = crate::split_horizontal(&rect);
+        assert_eq!(left, Rect::from_min_size(Pos2::ZERO, Vec2::new(5.0, 5.0)));
+        assert_eq!(right, Rect::from_min_size(Pos2::new(5.0, 0.0), Vec2::new(5.0, 5.0)));
+
+        let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(5.0, 3.0));
+        let [left, right] = crate::split_horizontal(&rect);
+        assert_eq!(left, Rect::from_min_size(Pos2::ZERO, Vec2::new(2.0, 3.0)));
+        assert_eq!(right, Rect::from_min_size(Pos2::new(2.0, 0.0), Vec2::new(3.0, 3.0)));
+
+        let rect = Rect::from_min_size(Pos2::new(100.0, 200.0), Vec2::new(10.0, 5.0));
+        let [left, right] = crate::split_horizontal(&rect);
+        assert_eq!(left, Rect::from_min_size(Pos2::new(100.0, 200.0), Vec2::new(5.0, 5.0)));
+        assert_eq!(right, Rect::from_min_size(Pos2::new(105.0, 200.0), Vec2::new(5.0, 5.0)));
+    }
+
+    #[test]
+    fn do_split_vertical() {
+        let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(10.0, 20.0));
+        let [left, right] = crate::split_vertical(&rect);
+        assert_eq!(left, Rect::from_min_size(Pos2::ZERO, Vec2::new(10.0, 10.0)));
+        assert_eq!(right, Rect::from_min_size(Pos2::new(0.0, 10.0), Vec2::new(10.0, 10.0)));
+
+        let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(10.0, 11.0));
+        let [left, right] = crate::split_vertical(&rect);
+        assert_eq!(left, Rect::from_min_size(Pos2::ZERO, Vec2::new(10.0, 5.0)));
+        assert_eq!(right, Rect::from_min_size(Pos2::new(0.0, 5.0), Vec2::new(10.0, 6.0)));
+
+        let rect = Rect::from_min_size(Pos2::new(100.0, 200.0), Vec2::new(10.0, 5.0));
+        let [left, right] = crate::split_vertical(&rect);
+        assert_eq!(left, Rect::from_min_size(Pos2::new(100.0, 200.0), Vec2::new(10.0, 2.0)));
+        assert_eq!(right, Rect::from_min_size(Pos2::new(100.0, 202.0), Vec2::new(10.0, 3.0)));
     }
 }
