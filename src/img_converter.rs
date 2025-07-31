@@ -43,10 +43,7 @@ pub fn u8_to_img(bin: &[u8]) -> ColorImage {
         pixels.push(Color32::from_rgba_premultiplied(color_buf[0], color_buf[1], color_buf[2], color_buf[3]));
     }
 
-    ColorImage {
-        size: [width, height],
-        pixels: pixels,
-    }
+    ColorImage::new([width, height], pixels,)
 }
 
 #[cfg(test)]
@@ -59,10 +56,7 @@ mod tests {
         let width: usize = 3;
         let height: usize = 2;
         let pixels = vec![Color32::BLACK, Color32::RED, Color32::BLUE, Color32::WHITE, Color32::TRANSPARENT, Color32::GREEN];
-        let img = ColorImage {
-            size: [width, height],
-            pixels: pixels.clone(),
-        };
+        let img = ColorImage::new([width, height], pixels.clone());
 
         let bin = img_to_u8(&img);
         let cvt_img = u8_to_img(&bin);

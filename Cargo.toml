@@ -10,7 +10,7 @@ homepage = "https://github.com/ruimo/clickable_img"
 repository = "https://github.com/ruimo/clickable_img"
 
 [dependencies]
-egui = { version = "0.31.1", features = [] }
+egui = { version = "0.32.0", features = [] }
 bit-set = "^0"
 usvg = "^0"
 resvg = "^0"

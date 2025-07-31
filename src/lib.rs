@@ -328,9 +328,9 @@ mod tests {
 
     #[test]
     fn img_can_convert_to_bitset() {
-        let img = ColorImage {
-            size: [8, 16],
-            pixels: vec![
+        let img = ColorImage::new(
+            [8, 16],
+            vec![
                 //  0  1  2  3  4  5  6  7    
                 T, T, T, T, T, T, T, T, // 0
                 T, T, T, T, T, T, T, T, // 1
@@ -348,8 +348,8 @@ mod tests {
                 T, T, T, T, T, T, T, T, // 13
                 B, B, T, T, T, T, T, T, // 14
                 T, T, T, T, T, T, T, T, // 15
-            ],
-        };
+            ]
+        );
         let bitset = to_bitset(&img);
         assert!(!bitset.contains(0));
         assert!(bitset.contains(18));
@@ -362,9 +362,9 @@ mod tests {
 
     #[test]
     fn is_opaque() {
-        let img = ColorImage {
-            size: [8, 16],
-            pixels: vec![
+        let img = ColorImage::new(
+            [8, 16],
+            vec![
                 //  0  1  2  3  4  5  6  7    
                 T, T, T, T, T, T, T, T, // 0
                 T, T, T, T, T, T, T, T, // 1
@@ -382,8 +382,8 @@ mod tests {
                 T, T, T, T, T, T, T, T, // 13
                 B, B, T, T, T, T, T, T, // 14
                 T, T, T, T, T, T, T, T, // 15
-            ],
-        };
+            ]
+        );
 
         let ctx = Context::default();
         let img = Img::from_img("test", img, &ctx);
