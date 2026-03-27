@@ -10,7 +10,12 @@ homepage = "https://github.com/ruimo/clickable_img"
 repository = "https://github.com/ruimo/clickable_img"
 
 [dependencies]
-egui = { version = "0.33.3", features = [] }
+egui = { version = "0.34.0", features = [] }
+#egui = { path = "../egui-0.34.0/crates/egui", features = [] }
+epaint = { version = "0.34.0" }
+#epaint = { path = "../egui-0.34.0/crates/epaint" }
+emath = { version = "0.34.0" }
+#emath = { path = "../egui-0.34.0/crates/emath" }
 bit-set = "^0"
 usvg = "^0"
 resvg = "^0"
