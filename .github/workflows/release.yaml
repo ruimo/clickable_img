@@ -36,4 +36,4 @@ jobs:
         git config --global user.email "ruimo.uno@gmail.com"
         git config --global user.name "Shisei Hanai"
         git tag
-        cargo release -vv --execute ${{ github.event.inputs.version_level }} --no-confirm --features persistence
+        cargo release -vv --execute ${{ github.event.inputs.version_level }} --no-confirm
